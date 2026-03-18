@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist_build/
+build/
+
+# PyInstaller
+*.spec
+build/
+# dist/ — намеренно НЕ игнорируется (там дистрибутивы проекта)
+
+# Выходные данные модулей (генерируются при запуске)
+module1_collector/output/*.json
+module2_tester/output/*.json
+module3_connector/output/*.txt
+
+# Но .gitkeep оставляем
+!module1_collector/output/.gitkeep
+!module2_tester/output/.gitkeep
+!module3_connector/output/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets (на всякий случай)
+*.env
+.env
+secrets.py
+config_local.py

@@ -1,0 +1,7 @@
+# VPN/Proxy Manager — зависимости Python
+# Установка: pip install -r requirements.txt
+
+requests>=2.31.0        # HTTP-запросы и работа с прокси
+beautifulsoup4>=4.12.0  # Парсинг HTML-страниц
+lxml>=4.9.0             # Быстрый HTML-парсер для BeautifulSoup
+PySocks>=1.7.1          # Поддержка SOCKS4/SOCKS5 в requests
