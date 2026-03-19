@@ -14,14 +14,14 @@ build/
 # PyInstaller
 *.spec
 build/
-# dist/ — намеренно НЕ игнорируется (там дистрибутивы проекта)
+# dist/ is intentionally NOT ignored (contains distributables)
 
-# Выходные данные модулей (генерируются при запуске)
+# Module output files (generated at runtime)
 module1_collector/output/*.json
 module2_tester/output/*.json
 module3_connector/output/*.txt
 
-# Но .gitkeep оставляем
+# Keep .gitkeep files
 !module1_collector/output/.gitkeep
 !module2_tester/output/.gitkeep
 !module3_connector/output/.gitkeep
@@ -37,7 +37,7 @@ module3_connector/output/*.txt
 Thumbs.db
 desktop.ini
 
-# Secrets (на всякий случай)
+# Secrets
 *.env
 .env
 secrets.py

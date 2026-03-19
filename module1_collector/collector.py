@@ -30,6 +30,11 @@ if sys.platform == "win32":
             ctypes.windll.kernel32.GetStdHandle(-11), 7)
     except Exception:
         pass
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 G   = "\033[92m"   # зелёный
 Y   = "\033[93m"   # жёлтый

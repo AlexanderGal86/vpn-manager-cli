@@ -30,6 +30,11 @@ if sys.platform == "win32":
         WINREG_OK = True
     except Exception:
         WINREG_OK = False
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 else:
     WINREG_OK = False
 
