@@ -6,7 +6,7 @@ Run this script to create the GitHub repo and push all files.
 Fill in GITHUB_TOKEN below and run: python push_to_github.py
 """
 
-import os, sys, subprocess, json, getpass
+import os, sys, subprocess, json, getpass, shutil
 import urllib.request, urllib.error
 
 USERNAME  = "AlexanderGal86"
@@ -70,7 +70,7 @@ def main():
         print(f"\r  {R}Invalid token (HTTP {code}){RS}"); sys.exit(1)
     print(f"\r  {G}Authorized as: {resp['login']}{RS}")
 
-    print(f"\n  {B}[1/4]{RS} Creating repository...")
+    print(f"\n  {B}[1/5]{RS} Creating repository...")
     resp, code = api("POST", "/user/repos", token, {
         "name": REPO_NAME, "description": REPO_DESC,
         "private": PRIVATE, "auto_init": False,
@@ -84,37 +84,51 @@ def main():
     else:
         print(f"  {R}API error {code}: {resp}{RS}"); sys.exit(1)
 
-    auth_url = f"https://{USERNAME}:{token}@github.com/{USERNAME}/{REPO_NAME}.git"
-    repo_dir = os.path.dirname(os.path.abspath(__file__))
+    auth_url   = f"https://{USERNAME}:{token}@github.com/{USERNAME}/{REPO_NAME}.git"
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    deploy_dir = os.path.join(script_dir, "_deploy_tmp")
 
-    print(f"\n  {B}[2/4]{RS} Initializing git...")
-    git = f"git -C \"{repo_dir}\""
-    if not os.path.exists(os.path.join(repo_dir, ".git")):
-        run(f"{git} init")
-    run(f'{git} config user.name "{USERNAME}"')
-    run(f'{git} config user.email "{USERNAME}@users.noreply.github.com"')
+    # Stage files into _deploy_tmp
+    print(f"\n  {B}[2/5]{RS} Staging files into {DIM}_deploy_tmp{RS}...")
+    if os.path.exists(deploy_dir):
+        shutil.rmtree(deploy_dir)
+
+    def _ignore(d, names):
+        skip = {"_deploy_tmp", "__pycache__", ".git"}
+        return [n for n in names if n in skip or n.endswith(".pyc")]
+
+    shutil.copytree(script_dir, deploy_dir, ignore=_ignore)
     print(f"  {G}OK{RS}")
 
-    print(f"\n  {B}[3/4]{RS} Committing files...")
-    run(f"{git} add -A")
-    status_out = run(f"{git} status --porcelain", check=False)
-    if status_out:
-        run(f'{git} commit -m "feat: full release v1.2.0 - all encoding fixes applied"')
+    git = f'git -C "{deploy_dir}"'
+
+    try:
+        print(f"\n  {B}[3/5]{RS} Initializing git...")
+        run(f"{git} init")
+        run(f'{git} config user.name "{USERNAME}"')
+        run(f'{git} config user.email "{USERNAME}@users.noreply.github.com"')
+        print(f"  {G}OK{RS}")
+
+        print(f"\n  {B}[4/5]{RS} Committing files...")
+        run(f"{git} add -A")
+        run(f'{git} commit -m "release: vpn-manager-cli"')
         print(f"  {G}Committed{RS}")
-    else:
-        print(f"  {DIM}Nothing to commit{RS}")
 
-    print(f"\n  {B}[4/4]{RS} Pushing to GitHub...")
-    remotes = run(f"{git} remote", check=False)
-    if "origin" in remotes.split():
-        run(f"{git} remote set-url origin {auth_url}")
-    else:
+        print(f"\n  {B}[5/5]{RS} Pushing to GitHub...")
         run(f"{git} remote add origin {auth_url}")
-    run(f"{git} branch -M main", check=False)
-    run(f"{git} push -u origin main --force")
+        run(f"{git} branch -M main", check=False)
+        run(f"{git} push -u origin main --force")
 
-    print(f"\n  {G}{B}Done!{RS}")
-    print(f"  {C}{html_url}{RS}\n")
+        print(f"\n  {G}{B}Done!{RS}")
+        print(f"  {C}{html_url}{RS}")
+
+    finally:
+        if os.path.exists(deploy_dir):
+            shutil.rmtree(deploy_dir)
+            print(f"\n  {DIM}_deploy_tmp removed{RS}")
+
+    print()
+
 
 if __name__ == "__main__":
     main()
