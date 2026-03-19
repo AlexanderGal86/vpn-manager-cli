@@ -1,53 +1,53 @@
 # AI_HINTS — Module 2: Speed Tester
 
-> Этот файл — подсказки для AI-ассистентов, работающих с данным модулем.
-> Описывает архитектуру, намерения, точки расширения и частые ловушки.
+Hints for AI assistants working with this module.
+Covers architecture, intent, extension points, and common pitfalls.
 
 ---
 
-## Назначение модуля
+## Purpose
 
-`tester.py` берёт список живых прокси от Module 1, проверяет реальную
-скорость работы через каждый прокси (скачивание тестового файла),
-фильтрует по минимальному порогу YouTube и сохраняет пригодные
-в `output/viable_proxies.json`. При повторном запуске умеет переиспользовать
-свежие результаты и удалять ненадёжные прокси автоматически.
+`tester.py` takes the list of live proxies from Module 1, tests real-world
+download speed through each proxy, filters by a minimum YouTube threshold,
+and saves suitable proxies to `output/viable_proxies.json`. On re-run it
+reuses fresh results and auto-evicts unreliable proxies.
 
 ---
 
-## Архитектура
+## Architecture
 
 ```
 find_viable()
-├── _load_viable()          → читает существующий viable_proxies.json
-├── _is_stale()             → проверяет TTL по полю tested_at
-├── разделение all_proxies  → fresh_viable (пропустить) / to_test (проверить)
-├── run_batch()             → батч из 10, по 2 параллельно
+├── _load_viable()          -> reads existing viable_proxies.json
+├── _is_stale()             -> checks TTL against tested_at field
+├── split all_proxies       -> fresh_viable (skip) / to_test (test)
+├── early exit              -> if fresh_viable >= TARGET_VIABLE, skip testing
+├── run_batch()             -> process 10 at a time, 2 in parallel
 │   ├── print_batch_header()
-│   └── test_proxy() × N   → замер задержки + скачивание
-├── _evict_failures()       → удаляет прокси с fail_count >= FAIL_EVICT_COUNT
-└── _save_and_print()       → таблица + запись JSON
+│   └── test_proxy() x N   -> latency check + speed download
+├── _evict_failures()       -> removes proxies with fail_count >= FAIL_EVICT_COUNT
+└── _save_and_print()       -> result table + write JSON
 ```
 
 ---
 
-## Ключевые константы
+## Key constants (edit at top of file)
 
-| Константа | Значение | Назначение |
+| Constant | Default | Purpose |
 |---|---|---|
-| `BATCH_SIZE` | 10 | Прокси в одном батче |
-| `PARALLEL_TESTS` | 2 | Параллельных тестов внутри батча |
-| `MIN_SPEED_MBPS` | 5.0 | Минимум для YouTube (SD ~2, HD ~5, 4K ~20) |
-| `TARGET_VIABLE` | 5 | Сколько найти и остановиться |
-| `SPEED_TIMEOUT` | 20 | Секунд на тест скорости |
-| `LATENCY_TIMEOUT` | 5 | Секунд на замер задержки |
-| `TEST_BYTES` | 2_097_152 | Сколько байт скачивать (2 МБ) |
-| `RETEST_TTL_HOURS` | 3 | Перепроверять прокси старше N часов |
-| `FAIL_EVICT_COUNT` | 3 | Удалить после N неудач подряд (0 = отключить) |
+| `BATCH_SIZE` | 10 | Proxies per batch |
+| `PARALLEL_TESTS` | 2 | Simultaneous tests within a batch |
+| `MIN_SPEED_MBPS` | 5.0 | Minimum speed (YouTube HD threshold) |
+| `TARGET_VIABLE` | 5 | Stop after finding this many viable proxies |
+| `SPEED_TIMEOUT` | 20 | Seconds for the full speed download |
+| `LATENCY_TIMEOUT` | 5 | Seconds for the latency HEAD request |
+| `TEST_BYTES` | 2_097_152 | Bytes to download per test (2 MB) |
+| `RETEST_TTL_HOURS` | 3 | Re-test proxies older than N hours |
+| `FAIL_EVICT_COUNT` | 3 | Remove after N consecutive failures (0 = never) |
 
 ---
 
-## Формат выходного файла
+## Output file format
 
 ```json
 [
@@ -57,117 +57,156 @@ find_viable()
     "type": "SOCKS5",
     "speed_mbps": 8.32,
     "latency_ms": 95,
-    "test_status": "ok",           // "ok" | "fail"
-    "tested_at": "2024-01-15T10:30:00+00:00",
-    "fail_count": 0,               // счётчик неудач подряд
-    "ping_ms": 120.5               // унаследовано от Module 1
+    "test_status": "ok",
+    "tested_at": "2025-03-18T10:30:00+00:00",
+    "fail_count": 0,
+    "ping_ms": 120.5
   }
 ]
 ```
 
-Файл **отсортирован по `speed_mbps` по убыванию** (быстрые первые).
+- `test_status`: `"ok"` or `"fail"`
+- `fail_count`: consecutive failure count; resets to 0 on success
+- `ping_ms`: inherited from Module 1 output
+- File is **sorted by `speed_mbps` descending** (fastest first)
 
 ---
 
-## Логика повторного запуска
+## Re-run logic
 
 ```
-Загрузить viable_proxies.json (existing_viable)
-Для каждого прокси из proxy_list.json:
-  ├── Есть в existing_viable И tested_at < RETEST_TTL_HOURS → fresh_viable (пропустить)
-  └── иначе → to_test (тестировать)
+Load viable_proxies.json (existing_viable)
+For each proxy in proxy_list.json:
+  - exists in existing_viable AND tested_at < RETEST_TTL_HOURS ago
+      -> fresh_viable (skip, keep as-is)
+  - otherwise
+      -> to_test (run speed test)
 
-После тестирования:
-  ├── Успех (speed >= MIN_SPEED_MBPS) → fail_count = 0
-  └── Провал → fail_count += 1
-      └── fail_count >= FAIL_EVICT_COUNT → УДАЛИТЬ из viable
+After testing:
+  - pass (speed >= MIN_SPEED_MBPS) -> fail_count = 0
+  - fail                           -> fail_count += 1
+      - fail_count >= FAIL_EVICT_COUNT -> REMOVE from viable list
 
-Итог = fresh_viable + новые viable - evicted
+Result = fresh_viable + new_viable - evicted
 ```
 
 ---
 
-## Алгоритм теста скорости
+## Speed test algorithm
 
 ```python
-# 1. Замер задержки (HEAD запрос к Google)
+# Stage 1: latency (HEAD request to a lightweight endpoint)
 t0 = time.time()
-requests.head("http://www.gstatic.com/generate_204", proxies=proxy_dict, timeout=5)
+requests.head("http://www.gstatic.com/generate_204",
+              proxies=proxy_dict, timeout=LATENCY_TIMEOUT)
 latency_ms = (time.time() - t0) * 1000
 
-# 2. Замер скорости (скачивание 2МБ через прокси)
+# Stage 2: speed (streaming download, stop after TEST_BYTES)
 t1 = time.time()
-resp = requests.get(TEST_URL, proxies=proxy_dict, stream=True, timeout=20)
+resp = requests.get(TEST_URL, proxies=proxy_dict,
+                    stream=True, timeout=SPEED_TIMEOUT)
 downloaded = 0
 for chunk in resp.iter_content(chunk_size=65536):
     downloaded += len(chunk)
-    if downloaded >= TEST_BYTES: break
+    if downloaded >= TEST_BYTES:
+        break
 speed_mbps = (downloaded * 8) / ((time.time() - t1) * 1_000_000)
 ```
 
-Fallback: если первый тестовый URL недоступен — пробует следующий из `SPEED_TEST_URLS`.
+If the first `SPEED_TEST_URLS` entry fails, the next one is tried automatically.
 
 ---
 
-## Формат прокси-URL для requests
+## Proxy URL format for `requests`
 
 ```python
 def proxy_dict(p):
-    if p["type"] in ("SOCKS5",):  return {"http": f"socks5h://{ip}:{port}", ...}
-    if p["type"] in ("SOCKS4",):  return {"http": f"socks4://{ip}:{port}",  ...}
-    else:                          return {"http": f"http://{ip}:{port}",    ...}
+    addr = f"{p['ip']}:{p['port']}"
+    if p["type"] == "SOCKS5":  return {"http": f"socks5h://{addr}", "https": f"socks5h://{addr}"}
+    if p["type"] == "SOCKS4":  return {"http": f"socks4://{addr}",  "https": f"socks4://{addr}"}
+    else:                       return {"http": f"http://{addr}",    "https": f"http://{addr}"}
 ```
 
-`socks5h://` — резолвинг DNS через прокси (важно для анонимности).
-Требует библиотеку `PySocks` (`pip install PySocks`).
+`socks5h://` routes DNS resolution through the proxy (important for anonymity).
+Requires `PySocks` (`pip install PySocks`, already in `requirements.txt`).
 
 ---
 
-## Частые ловушки
+## YouTube speed reference
 
-1. **`requests` без `PySocks`** — SOCKS-прокси вызовут `ValueError: SOCKSHTTPSConnectionPool`.
-   Решение: `pip install PySocks` (уже в requirements.txt).
-
-2. **SPEED_TEST_URLS недоступны** — все три URL могут быть заблокированы через прокси.
-   При необходимости добавь свои URL в список. Файл должен быть ≥ TEST_BYTES.
-
-3. **`threading.Lock` в `run_batch`** — обновление прогресса идёт из нескольких потоков.
-   Не убирай Lock при модификации print-логики.
-
-4. **`_is_stale` без tzinfo** — старые записи без timezone обрабатываются:
-   `tested.replace(tzinfo=timezone.utc)`. Не удаляй эту строку.
-
-5. **TARGET_VIABLE** — остановка по количеству, а не по батчам.
-   Если нужна остановка после первого батча — уменьши до BATCH_SIZE.
+| Quality | Bitrate |
+|---|---|
+| SD 480p | ~2 Mbit/s |
+| HD 720p | ~2.5 Mbit/s |
+| HD 1080p | ~5 Mbit/s ← default threshold |
+| 4K | ~20 Mbit/s |
 
 ---
 
-## Расширение: другие метрики
+## Common pitfalls
 
-Чтобы добавить проверку конкретного сайта (например, youtube.com):
+**1. `requests` without `PySocks` installed**
+SOCKS proxies raise `ValueError: SOCKSHTTPSConnectionPool(...)`.
+Fix: `pip install PySocks` (already in `requirements.txt`).
+
+**2. All SPEED_TEST_URLS blocked through the proxy**
+All three fallback URLs may be unreachable through certain proxies.
+If this is a persistent problem, add alternative URLs to `SPEED_TEST_URLS`.
+Each URL must serve a file of at least `TEST_BYTES` bytes without auth.
+
+**3. `threading.Lock` in `run_batch` — do not remove**
+Progress display is updated from two concurrent threads.
+Removing the lock causes interleaved writes and garbled output.
+
+**4. `_is_stale` handles timezone-naive records**
 ```python
-# В test_proxy() после замера скорости:
+if tested.tzinfo is None:
+    tested = tested.replace(tzinfo=timezone.utc)
+```
+Old records without timezone info are treated as UTC. Do not remove this guard.
+
+**5. `TARGET_VIABLE` stops by count, not by batch**
+The module stops as soon as `len(viable) >= TARGET_VIABLE`, even mid-batch.
+To process exactly one batch regardless of results, set `TARGET_VIABLE = BATCH_SIZE`.
+
+**6. Windows console output garbled**
+Same fix as Module 1 — `sys.stdout.reconfigure(encoding="utf-8")` at startup.
+Already present in the file. Do not remove.
+
+**7. `fail_count` persists across sessions**
+The `fail_count` field is written to JSON and read back on re-run.
+A proxy evicted by `FAIL_EVICT_COUNT` will not reappear unless Module 1
+re-collects it and it passes a fresh speed test.
+
+---
+
+## Extension: add a per-site reachability check
+
+Add after the speed measurement block in `test_proxy()`:
+```python
 try:
-    r = requests.get("https://www.youtube.com", proxies=proxies, timeout=10)
-    result["youtube_accessible"] = r.status_code == 200
-except:
+    r = requests.get("https://www.youtube.com",
+                     proxies=proxies, timeout=10)
+    result["youtube_accessible"] = (r.status_code == 200)
+except Exception:
     result["youtube_accessible"] = False
 ```
 
 ---
 
-## Зависимости
+## Dependencies
 
 ```
 requests>=2.31.0
 PySocks>=1.7.1
 ```
 
-Стандартные: `concurrent.futures`, `threading`, `json`, `time`, `socket`
+Standard library: `concurrent.futures`, `threading`, `json`, `time`,
+`datetime`, `timezone`
 
 ---
 
-## Интеграция
+## Integration
 
-- **Вход**: `../module1_collector/output/proxy_list.json`
-- **Выход**: `output/viable_proxies.json` → читается Module 3
+- **Input**: `../module1_collector/output/proxy_list.json`
+- **Output**: `output/viable_proxies.json` — read by Module 3

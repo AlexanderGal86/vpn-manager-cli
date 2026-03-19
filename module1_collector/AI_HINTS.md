@@ -1,142 +1,174 @@
 # AI_HINTS — Module 1: Proxy Collector
 
-> Этот файл — подсказки для AI-ассистентов, работающих с данным модулем.
-> Описывает архитектуру, намерения, точки расширения и частые ловушки.
+Hints for AI assistants working with this module.
+Covers architecture, intent, extension points, and common pitfalls.
 
 ---
 
-## Назначение модуля
+## Purpose
 
-`collector.py` собирает IP-адреса прокси-серверов из трёх типов источников,
-проверяет их доступность через TCP-соединение и сохраняет живые адреса
-в `output/proxy_list.json` с временными метками для TTL-кэша.
+`collector.py` gathers proxy IP addresses from three source types,
+verifies reachability via TCP connect, and saves live addresses to
+`output/proxy_list.json` with timestamps for TTL-based caching.
 
 ---
 
-## Архитектура
+## Architecture
 
 ```
 collect_all()
-├── _load_cache()          → разделяет existing JSON на fresh / stale
-├── parse_html_source()    → BeautifulSoup парсинг таблиц + пагинация
-├── download_file_source() → скачивание текстовых файлов IP:PORT
-├── fetch_api_source()     → JSON API с постраничной загрузкой
-├── дедупликация           → по ключу "ip:port"
-└── _ping_batch()          → параллельный TCP-пинг (ThreadPoolExecutor)
-    └── check_proxy()      → одна попытка TCP connect + запись времени
+├── _load_cache()          -> splits existing JSON into fresh / stale buckets
+├── parse_html_source()    -> BeautifulSoup table scraping + pagination
+├── download_file_source() -> downloads IP:PORT text files line by line
+├── fetch_api_source()     -> JSON API with page iteration
+├── deduplication          -> by "ip:port" key; skips keys in fresh cache
+└── _ping_batch()          -> parallel TCP ping (ThreadPoolExecutor)
+    └── check_proxy()      -> single TCP connect attempt + writes checked_at
 ```
 
 ---
 
-## Ключевые константы (настроить в начале файла)
+## Key constants (edit at top of file)
 
-| Константа | Значение | Назначение |
+| Constant | Default | Purpose |
 |---|---|---|
-| `CACHE_TTL_HOURS` | 6 | Адреса старше N часов перепроверяются |
-| `PING_TIMEOUT` | 3 | Секунд на одну TCP-попытку |
-| `PING_WORKERS` | 40 | Параллельных потоков для пинга |
-| `REQUEST_TIMEOUT` | 12 | Таймаут HTTP-запроса к источнику |
+| `CACHE_TTL_HOURS` | 6 | Addresses older than N hours are re-pinged |
+| `PING_TIMEOUT` | 3 | Seconds per TCP connect attempt |
+| `PING_WORKERS` | 40 | Parallel worker threads |
+| `REQUEST_TIMEOUT` | 12 | HTTP request timeout for source fetching |
 
 ---
 
-## Формат выходного файла
+## Output file format
 
 ```json
 [
   {
     "ip": "1.2.3.4",
     "port": 8080,
-    "type": "HTTP",          // HTTP | HTTPS | SOCKS4 | SOCKS5
+    "type": "HTTP",
     "ping_ms": 120.5,
     "status": "alive",
-    "checked_at": "2024-01-15T10:30:00+00:00"   // ISO 8601 UTC
+    "checked_at": "2025-03-18T10:30:00+00:00"
   }
 ]
 ```
 
-Файл **всегда отсортирован по `ping_ms` по возрастанию** (лучшие первые).
-Только живые прокси (`status == "alive"`) попадают в файл.
+- `type` is one of: `HTTP`, `HTTPS`, `SOCKS4`, `SOCKS5`
+- `checked_at` is always timezone-aware ISO 8601 UTC
+- File is **sorted by `ping_ms` ascending** (fastest first)
+- Only `status == "alive"` entries are written
 
 ---
 
-## TTL-кэш: логика при повторном запуске
+## TTL cache logic on re-run
 
 ```
-Есть output/proxy_list.json?
-  ├── НЕТ → полный сбор и пинг
-  └── ДА  → для каждого адреса:
-        ├── checked_at < CACHE_TTL_HOURS часов назад → оставить как есть (fresh)
-        └── иначе → перепроверить TCP-пингом (stale)
-Новые адреса из источников, которых нет в кэше → всегда пингуются
-Итог = fresh_cache + newly_alive (объединяются и пересортируются)
+output/proxy_list.json exists?
+  NO  -> full collect + ping all
+  YES -> for each address:
+           age < CACHE_TTL_HOURS  -> keep as-is (fresh)
+           age >= CACHE_TTL_HOURS -> re-ping (stale)
+
+New addresses from sources not in cache -> always pinged
+Result = fresh_cache + newly_alive, merged and re-sorted by ping_ms
 ```
+
+Setting `CACHE_TTL_HOURS = 0` disables the cache entirely (full overwrite
+every run).
 
 ---
 
-## Добавление нового источника
+## Adding a new source
 
-### HTML-источник
-Добавь словарь в список `HTML_SOURCES`:
+### HTML source — add a dict to `HTML_SOURCES`
 ```python
 {
     "name":          "example-proxy-site.com",
     "start_url":     "https://example-proxy-site.com/list/",
-    "row_sel":       "table.proxy-table tbody tr",  # CSS-селектор строк
-    "ip_col":        0,          # индекс колонки с IP
-    "port_col":      1,          # индекс колонки с портом
-    "type_col":      4,          # индекс колонки с типом (опционально)
-    "https_values":  ["yes", "HTTPS"],  # значения, означающие HTTPS
-    "next_page_sel": "a.next-page",     # None если нет пагинации
+    "row_sel":       "table.proxy-table tbody tr",  # CSS selector for rows
+    "ip_col":        0,           # column index for IP
+    "port_col":      1,           # column index for port
+    "type_col":      4,           # column index for protocol (optional)
+    "https_values":  ["yes", "HTTPS"],  # values that mean HTTPS
+    "next_page_sel": "a.next-page",     # None if no pagination
     "max_pages":     5,
 }
 ```
 
-### Файловый URL
+### File URL source — add a dict to `FILE_SOURCES`
 ```python
 {
     "name":       "My List",
     "url":        "https://example.com/proxies.txt",
-    "proxy_type": "SOCKS5",  # HTTP | HTTPS | SOCKS4 | SOCKS5
+    "proxy_type": "SOCKS5",   # HTTP | HTTPS | SOCKS4 | SOCKS5
 }
 ```
 
-### API-источник
+### API source — add a dict to `API_SOURCES`
 ```python
 {
     "name":            "My API",
     "url":             "https://api.example.com/proxies",
     "params":          {"limit": 100, "page": 1},
-    "data_key":        "data",        # ключ массива в JSON-ответе
+    "data_key":        "data",        # key containing the list in JSON response
     "ip_field":        "ip",
     "port_field":      "port",
-    "protocols_field": "protocols",  # поле с типом (список строк)
+    "protocols_field": "protocols",   # field with protocol type (list of strings)
     "max_pages":       5,
 }
 ```
 
 ---
 
-## Частые ловушки
+## Common pitfalls
 
-1. **`checked_at` без timezone** — старые записи могут не иметь `tzinfo`.
-   Код уже обрабатывает это: `checked.replace(tzinfo=timezone.utc)`.
-   При изменении — не сломай эту логику.
+**1. `checked_at` without timezone (legacy records)**
+Old records may lack `tzinfo`. Comparing a naive datetime with an aware one
+raises `TypeError`. The code guards against this:
+```python
+if checked.tzinfo is None:
+    checked = checked.replace(tzinfo=timezone.utc)
+```
+Do not remove this guard when modifying `_load_cache()`.
 
-2. **BeautifulSoup lxml vs html.parser** — используем `lxml` (быстрее).
-   Если `lxml` не установлен → `ImportError`. Установи через `requirements.txt`.
+**2. Windows console output garbled**
+All `print()` calls use UTF-8. On Windows, stdout defaults to cp866/cp1252.
+The fix at module startup:
+```python
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+```
+`errors="replace"` prevents crashes — outputs `?` for unencodable chars.
+`SetConsoleMode` enables ANSI colours but does NOT change the encoding.
+Both calls are required.
 
-3. **TCP-пинг ≠ HTTP-доступность** — прокси может принимать TCP-соединение
-   но не быть рабочим HTTP-прокси. Финальная проверка скорости — в Module 2.
+**3. BeautifulSoup: `lxml` vs `html.parser`**
+`lxml` is used (faster). If not installed → `ImportError`.
+Always install via `requirements.txt`, never skip it.
 
-4. **PING_WORKERS > 100** — может вызвать ошибку "Too many open files" на Linux.
-   Безопасный максимум: 60–80.
+**4. TCP ping != HTTP proxy reachability**
+A host may accept a TCP connection but not function as an HTTP proxy.
+This pass-through is intentional — Module 2 does the real HTTP test.
+Do not add HTTP checks here; it would multiply run time by 10×.
 
-5. **Сайты с Cloudflare** — некоторые источники заблокируют scraping.
-   Обновляй `User-Agent` в `HEADERS` при проблемах.
+**5. `PING_WORKERS` above 100 on Linux**
+May cause "Too many open files". Safe maximum: 60–80.
+The default of 40 is conservative and works everywhere.
+
+**6. Cloudflare-protected sources**
+Some sites block automated requests. Symptoms: empty result or 403/503.
+Update `User-Agent` in `HEADERS` to a recent browser string.
+Consider rotating User-Agents for problematic sources.
+
+**7. HTML sources break on site layout changes**
+CSS selectors in `HTML_SOURCES` are brittle. If a source returns 0 rows,
+the site likely changed its markup. Update `row_sel`, `ip_col`, etc.
+This is the highest-priority maintenance task in the project.
 
 ---
 
-## Зависимости
+## Dependencies
 
 ```
 requests>=2.31.0
@@ -144,15 +176,17 @@ beautifulsoup4>=4.12.0
 lxml>=4.9.0
 ```
 
-Стандартные библиотеки: `socket`, `concurrent.futures`, `json`, `re`, `time`
+Standard library used: `socket`, `concurrent.futures`, `json`, `re`, `time`,
+`datetime`, `timezone`
 
 ---
 
-## Интеграция с Module 2
+## Integration with Module 2
 
-Module 2 читает `module1_collector/output/proxy_list.json`.
-Путь захардкожен относительно расположения `tester.py`:
+Module 2 reads `module1_collector/output/proxy_list.json`.
+The path is hardcoded relative to `tester.py` location:
 ```python
 INPUT_FILE = os.path.join(BASE_DIR, "..", "module1_collector", "output", "proxy_list.json")
 ```
-Не переименовывай выходной файл без правки `tester.py`.
+Do not rename the output file without updating `tester.py`.
+The `output/` directory must exist (tracked via `.gitkeep`).
