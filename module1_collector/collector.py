@@ -144,6 +144,45 @@ FILE_SOURCES = [
         "url":        "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks4.txt",
         "proxy_type": "SOCKS4",
     },
+    # ── Additional SOCKS5 sources (prioritised — support HTTPS tunnelling) ──
+    {
+        "name":       "ProxyScrape v3 — SOCKS5",
+        "url":        "https://api.proxyscrape.com/v3/free-proxy-list/get"
+                      "?request=displayproxies&protocol=socks5&timeout=3000&limit=300",
+        "proxy_type": "SOCKS5",
+    },
+    {
+        "name":       "Monosans — SOCKS5",
+        "url":        "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/socks5.txt",
+        "proxy_type": "SOCKS5",
+    },
+    {
+        "name":       "Hookzof — SOCKS5",
+        "url":        "https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt",
+        "proxy_type": "SOCKS5",
+    },
+    {
+        "name":       "B4RC0DE — SOCKS5",
+        "url":        "https://raw.githubusercontent.com/B4RC0DE-TM/proxy-list/main/SOCKS5.txt",
+        "proxy_type": "SOCKS5",
+    },
+    {
+        "name":       "Mertguvencli — mixed",
+        "url":        "https://raw.githubusercontent.com/mertguvencli/http-proxy-list/main/proxy-list/data.txt",
+        "proxy_type": "HTTP",
+    },
+    # ── Additional HTTP sources (fallback — HTTP-only sites) ─────────────────
+    {
+        "name":       "ProxyScrape v3 — HTTP Elite",
+        "url":        "https://api.proxyscrape.com/v3/free-proxy-list/get"
+                      "?request=displayproxies&protocol=http&timeout=3000&anonymity=elite&limit=200",
+        "proxy_type": "HTTP",
+    },
+    {
+        "name":       "Monosans — HTTP",
+        "url":        "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/http.txt",
+        "proxy_type": "HTTP",
+    },
 ]
 
 # JSON API источники
@@ -152,8 +191,9 @@ API_SOURCES = [
         "name":            "GeoNode API",
         "url":             "https://proxylist.geonode.com/api/proxy-list",
         "params":          {
-            "limit": 100, "page": 1,
-            "sort_by": "lastChecked", "sort_type": "desc"
+            "limit": 200, "page": 1,
+            "sort_by": "lastChecked", "sort_type": "desc",
+            "protocols": "http,https",
         },
         "data_key":        "data",
         "ip_field":        "ip",
