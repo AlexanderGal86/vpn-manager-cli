@@ -21,12 +21,12 @@ if sys.platform == "win32":
 G="\033[92m";Y="\033[93m";R="\033[91m";C="\033[96m";B="\033[1m";RS="\033[0m";DIM="\033[2m"
 
 ARCHIVE_B64 = (
-    "UEsDBAoAAAAAAB1+clwAAAAAAAAAAAAAAAAMABwAdnBuLW1hbmFnZXIvVVQJAANqybpp0bO7aXV4CwAB"
+    "UEsDBAoAAAAAAB1+clwAAAAAAAAAAAAAAAAMABwAdnBuLW1hbmFnZXIvVVQJAANqybpp7MK7aXV4CwAB"
     "BAAAAAAEAAAAAFBLAwQKAAAAAAAAfnJcAAAAAAAAAAAAAAAAHgAcAHZwbi1tYW5hZ2VyL21vZHVsZTNf"
-    "Y29ubmVjdG9yL1VUCQADMMm6adGzu2l1eAsAAQQAAAAABAAAAABQSwMECgAAAAAAon1yXAAAAAAAAAAA"
-    "AAAAACUAHAB2cG4tbWFuYWdlci9tb2R1bGUzX2Nvbm5lY3Rvci9vdXRwdXQvVVQJAAN/yLpp0bO7aXV4"
+    "Y29ubmVjdG9yL1VUCQADMMm6aezCu2l1eAsAAQQAAAAABAAAAABQSwMECgAAAAAAon1yXAAAAAAAAAAA"
+    "AAAAACUAHAB2cG4tbWFuYWdlci9tb2R1bGUzX2Nvbm5lY3Rvci9vdXRwdXQvVVQJAAN/yLpp7MK7aXV4"
     "CwABBAAAAAAEAAAAAFBLAwQUAAAACADrQ3NcLu08/oEPAAD7NQAAKgAcAHZwbi1tYW5hZ2VyL21vZHVs"
-    "ZTNfY29ubmVjdG9yL2Nvbm5lY3Rvci5weVVUCQADWrS7aTK0u2l1eAsAAQQAAAAABAAAAADdW3tzE9cV"
+    "ZTNfY29ubmVjdG9yL2Nvbm5lY3Rvci5weVVUCQADWrS7aVq0u2l1eAsAAQQAAAAABAAAAADdW3tzE9cV"
     "/1+f4nYpo93UWiy7IYkS0zG2AA1gu5YdSo1nR5au7I2l3WV3FePRaMYEQtKB5kEhmUmTEpJO+0dnOoLY"
     "YHBsvsLqK/iT9Jx793F3JRk5oYXGA2b37n2cex6/87gXSZJS56cn58/lySjZ37hDZman/3CRTExPTeUn"
     "5qZnUxPnChlv29vtfOBtdTY6170t70nnKvE2vZ3Op8R72LnpPfD2Ohtem3jP4J8972nnqrdNYMxjAk/P"
@@ -94,8 +94,8 @@ ARCHIVE_B64 = (
     "YsQmLcZITIa7fliGWMv+/8RG4O8e8iuqOZJucgJaaTVx34b9wNjbOJLfZuUx2h4LejcYNMLmMfQlcRNm"
     "tSKHsMBqm1xWJaVbiYJ3wXbQlhfyqIyL4VV1Dv+bDJf9CK3zqeCi8f9UaBr+DxpNY+LUNMQuTfOlyoEs"
     "9R9QSwMECgAAAAAAr4ByXAAAAAAAAAAAAAAAABsAHAB2cG4tbWFuYWdlci9tb2R1bGUyX3Rlc3Rlci9V"
-    "VAkAA0nNumnRs7tpdXgLAAEEAAAAAAQAAAAAUEsDBBQAAAAIANxDc1wAOt8/0xUAAJFIAAAkABwAdnBu"
-    "LW1hbmFnZXIvbW9kdWxlMl90ZXN0ZXIvdGVzdGVyLnB5VVQJAAM/tLtpMrS7aXV4CwABBAAAAAAEAAAA"
+    "VAkAA0nNumnswrtpdXgLAAEEAAAAAAQAAAAAUEsDBBQAAAAIANxDc1wAOt8/0xUAAJFIAAAkABwAdnBu"
+    "LW1hbmFnZXIvbW9kdWxlMl90ZXN0ZXIvdGVzdGVyLnB5VVQJAAM/tLtpP7S7aXV4CwABBAAAAAAEAAAA"
     "AN08a3PbRpLf+SvmkHIJsGmIki3vhhdmyw/FVpXtuCR5q3yyCkWRoIQVSfAA0LLD4pUfeVacOM7am629"
     "pHaT7ObTXZUsW7FiW/ZfAP+Cfsl198wAMwBoObmrTXKMLIHATE9PT7+7EcMwSufePnXx7CybZnvX77GF"
     "C7Ozp9ji7MLi7Hwpvhtvj66P7o5ustGN+EW8A7+fx09Y/BzuxF/C9aPRrfjp6A6bKrPRTRh8A37vwJRb"
@@ -190,7 +190,7 @@ ARCHIVE_B64 = (
     "NDaM/XOIpK+a/U4vkcEWFouabjeqTeP0EIyMUw8bnld7qw4Uzza+EomBnRO9KGwIOtADBZ/iiE86VVSa"
     "HN0Bu6JV3yw7jIIW9adPHLh0+EDn8IEmO3CmeuBc9cDChBLaKTpG5NFK+P/dcBz8v6w4DpUDHKdT97qO"
     "I4oCWr669D9QSwMECgAAAAAAon1yXAAAAAAAAAAAAAAAACIAHAB2cG4tbWFuYWdlci9tb2R1bGUyX3Rl"
-    "c3Rlci9vdXRwdXQvVVQJAAN/yLpp0bO7aXV4CwABBAAAAAAEAAAAAFBLAwQKAAAAAAAmfnJcAAAAAAAA"
+    "c3Rlci9vdXRwdXQvVVQJAAN/yLpp7MK7aXV4CwABBAAAAAAEAAAAAFBLAwQKAAAAAAAmfnJcAAAAAAAA"
     "AAAAAAAAJwAcAHZwbi1tYW5hZ2VyL21vZHVsZTJfdGVzdGVyL19fcHljYWNoZV9fL1VUCQADeMm6abrL"
     "uml1eAsAAQQAAAAABAAAAABQSwMEFAAAAAgAJn5yXKEMUPtoIgAAeUAAAD0AHAB2cG4tbWFuYWdlci9t"
     "b2R1bGUyX3Rlc3Rlci9fX3B5Y2FjaGVfXy90ZXN0ZXIuY3B5dGhvbi0zMTIucHljVVQJAAN4ybppeMm6"
@@ -344,9 +344,9 @@ ARCHIVE_B64 = (
     "kpD+f1BLAwQUAAAACADCQnNcEwlTrD8AAABDAAAAHAAcAHZwbi1tYW5hZ2VyL3JlcXVpcmVtZW50cy50"
     "eHRVVAkAAyyyu2kssrtpdXgLAAEEAAAAAAQAAAAAK0otLE0tLim2szXSMzbUM+BKSk0sLclMK80pzi8t"
     "MLGzNdEzNAIK51Tk5oA4lkB2QGVwfnI2UIuhnrmeIRcAUEsDBAoAAAAAAK+AclwAAAAAAAAAAAAAAAAe"
-    "ABwAdnBuLW1hbmFnZXIvbW9kdWxlMV9jb2xsZWN0b3IvVVQJAANJzbpp0bO7aXV4CwABBAAAAAAEAAAA"
+    "ABwAdnBuLW1hbmFnZXIvbW9kdWxlMV9jb2xsZWN0b3IvVVQJAANJzbpp7MK7aXV4CwABBAAAAAAEAAAA"
     "AFBLAwQUAAAACADcQ3NcJa056tEWAADJUQAAKgAcAHZwbi1tYW5hZ2VyL21vZHVsZTFfY29sbGVjdG9y"
-    "L2NvbGxlY3Rvci5weVVUCQADP7S7aTK0u2l1eAsAAQQAAAAABAAAAADdXHtz1FaW/78/xS2xBCm05Rcw"
+    "L2NvbGxlY3Rvci5weVVUCQADP7S7aT+0u2l1eAsAAQQAAAAABAAAAADdXHtz1FaW/78/xS2xBCm05Rcw"
     "k57pbBHHATaAvbapTMp4VXLrtq2xWuqV1LGdrq7CMHnMkgmbLJmZym42m33+sf8QwInB2K6aT6D+CnyS"
     "PedcPa6kbmOTzEC2cdF63Hvu47x+59x7W1GUypWZN69dnmbj7OmNu2x2buZX77KpmcuXp6cWZuYq0TfR"
     "fvRttNO/Ed2Ltvs32aXZEbh6CPfb/a3oHosO4HI/egw3Oyzaib5nFxeuXB7pb/VvUp09qPthlfV/A9eP"
@@ -445,7 +445,7 @@ ARCHIVE_B64 = (
     "cRZ3w/oEEgg6PjfMoGHb9bdM0PhBwjfVK83PPi3LdqUuDfYkJGu4Jps4EHRDpfzYgIRuU4k+T/aAQJ3c"
     "oqKGW0GbtE/i1Ml3R062Rk5a7OTF2skrtZPzpwrJpjgrm0xApYK/sWYYCGsNgxLehtEybdcw4px3LrVZ"
     "+T9QSwMECgAAAAAAon1yXAAAAAAAAAAAAAAAACUAHAB2cG4tbWFuYWdlci9tb2R1bGUxX2NvbGxlY3Rv"
-    "ci9vdXRwdXQvVVQJAAN/yLpp0bO7aXV4CwABBAAAAAAEAAAAAFBLAwQKAAAAAAAmfnJcAAAAAAAAAAAA"
+    "ci9vdXRwdXQvVVQJAAN/yLpp7MK7aXV4CwABBAAAAAAEAAAAAFBLAwQKAAAAAAAmfnJcAAAAAAAAAAAA"
     "AAAAKgAcAHZwbi1tYW5hZ2VyL21vZHVsZTFfY29sbGVjdG9yL19fcHljYWNoZV9fL1VUCQADeMm6abrL"
     "uml1eAsAAQQAAAAABAAAAABQSwMEFAAAAAgAJn5yXFNrTVxdIwAAiUUAAEMAHAB2cG4tbWFuYWdlci9t"
     "b2R1bGUxX2NvbGxlY3Rvci9fX3B5Y2FjaGVfXy9jb2xsZWN0b3IuY3B5dGhvbi0zMTIucHljVVQJAAN4"
@@ -639,7 +639,7 @@ ARCHIVE_B64 = (
     "0yz6zQBGwp9tbn2S2srOEEbuwmLr6Y18NpNKfZxff5BhwdHtdh+W1Jh/VogtD1Zyq4/y2fTvUpPicak0"
     "s7K1sraWWsvnUtnclNKEEMqtbD1M5fKfplcerE1pWpIyuD//4At8m1ZCUw+lRsn+F7NhiuuVSPJ6Oicq"
     "bjZicJGa9JnLksQwwu9Y2bjSlmLch6+5OZCg13MlyIeuni6xLI/nOseq8n9QSwMEFAAAAAgA3ENzXH+D"
-    "E9eQBwAAMBkAABMAHAB2cG4tbWFuYWdlci9tYWluLnB5VVQJAAM/tLtpMrS7aXV4CwABBAAAAAAEAAAA"
+    "E9eQBwAAMBkAABMAHAB2cG4tbWFuYWdlci9tYWluLnB5VVQJAAM/tLtpP7S7aXV4CwABBAAAAAAEAAAA"
     "AN1YbW/URhD+7l+xcj/gqy5O7k59S3UfQgghahNQgqoiqCznbi8x9dmW7YNEUaQAoqUCFQIJoBQIpVLb"
     "D1UFIYGQNOEvrP9Cfklndtcv9xZoGhXU0+nOu56dndl5ZmZnVFVVvjo11ntq/OTXZ8jowNjA8NA42VtY"
     "IuwO22ZP2Rrbia6zV4S9hMHr6Ep0iW0p5Td/FHYvXQBPG9Flwv5iu2w9ugKMNwl7zXYJ240us3W2wbaj"
@@ -749,10 +749,28 @@ def install_deps():
     print(f"\n  {B}Install Python dependencies{RS}")
     print(f"  {DIM}requests, beautifulsoup4, lxml, PySocks{RS}\n")
     if input("  Install now? [Y/n] > ").strip().lower() in ("", "y"):
-        result = subprocess.run([sys.executable, "-m", "pip", "install", "-r", req, "-q"])
-        print(f"  {G}Done.{RS}" if result.returncode == 0 else f"  {Y}Failed. Run: pip install -r {req}{RS}")
+        print()
+        # Run pip WITHOUT -q so errors are visible
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-r", req],
+        )
+        print()
+        if result.returncode == 0:
+            # Verify the key package actually imports
+            try:
+                import importlib
+                importlib.import_module("requests")
+                print(f"  {G}Dependencies installed and verified.{RS}")
+            except ImportError:
+                print(f"  {Y}pip reported success but 'requests' is not importable.")
+                print(f"  Try: pip install -r {req}{RS}")
+        else:
+            print(f"  {R}pip failed (exit code {result.returncode}).{RS}")
+            print(f"  Run manually:  pip install -r {req}")
+            print(f"  Or:            python -m pip install -r {req}")
     else:
-        print(f"  {DIM}Skipped. Run: pip install -r {req}{RS}")
+        print(f"\n  {Y}Skipped. Run before starting:{RS}")
+        print(f"    pip install -r {req}")
 
 def show_usage():
     print(f"""
