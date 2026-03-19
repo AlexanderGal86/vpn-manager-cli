@@ -12,7 +12,7 @@ echo.
 net session >nul 2>&1
 if %errorLevel% NEQ 0 (
     echo  [i] Running without admin rights - this is OK for installation.
-    echo  [i] Module 3 (proxy connect) will need admin when you run it.
+    echo  [i] Module 3 will need admin when you run it.
     echo.
 )
 
