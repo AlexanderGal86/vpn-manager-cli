@@ -13,7 +13,7 @@
 Three independent CLI modules connected in a pipeline:
 
 ```
-[Module 1: Collector] ──proxy_list.json──> [Module 2: Tester] ──viable_proxies.json──> [Module 3: Connector]
+[Module 1: Collector] --proxy_list.json--> [Module 2: Tester] --viable_proxies.json--> [Module 3: Connector]
    Collect IPs from                          Speed test in                                 Set Windows
    open sources:                             batches of 10,                               system proxy via
    HTML / files / API                        2 in parallel,                               registry + netsh
@@ -28,28 +28,28 @@ Three independent CLI modules connected in a pipeline:
 ```
 Download dist/setup.bat -> double-click
 ```
-- Checks for admin rights (auto-relaunches via UAC if needed)
-- Detects Python; offers to open python.org if missing
-- Extracts the full project, runs pip install, shows usage
+Extracts the project, installs pip dependencies, shows usage.
 
-### Option B — Standalone EXE (no Python required)
-```
-1. Download dist/build_exe_source.py + dist/build_exe_on_windows.bat
-2. Run build_exe_on_windows.bat  -> produces dist/VPN-Manager-Setup.exe (~7 MB)
-3. Run VPN-Manager-Setup.exe
-```
-The EXE bundles the Python runtime via PyInstaller — nothing needs to be installed.
-
-### Option C — From source
+### Option B — From source
 ```bash
 git clone https://github.com/AlexanderGal86/vpn-manager-cli.git
 cd vpn-manager-cli
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
+python main.py
+```
 
+> Use `python main.py`, not `.\main.py` — the dot-slash form may invoke a
+> different Python (Windows file association) that does not have the packages.
+
+---
+
+## Usage
+
+```bash
 python main.py              # full pipeline: 1 -> 2 -> 3
-python main.py --module 1   # collect only
+python main.py --module 1   # collect proxies only
 python main.py --module 2   # speed test only
-python main.py --module 3   # connect only
+python main.py --module 3   # connect proxy (needs admin)
 ```
 
 ---
@@ -65,26 +65,21 @@ vpn-manager-cli/
 |
 +-- module1_collector/
 |   +-- collector.py                 <- proxy collector
-|   +-- AI_HINTS.md                  <- architecture notes for AI assistants
-|   +-- output/
-|       +-- proxy_list.json          <- generated: alive proxies sorted by ping
+|   +-- AI_HINTS.md
+|   +-- output/proxy_list.json       <- generated
 |
 +-- module2_tester/
 |   +-- tester.py                    <- speed tester
 |   +-- AI_HINTS.md
-|   +-- output/
-|       +-- viable_proxies.json      <- generated: proxies passing speed threshold
+|   +-- output/viable_proxies.json   <- generated
 |
 +-- module3_connector/
 |   +-- connector.py                 <- Windows proxy connector
 |   +-- AI_HINTS.md
-|   +-- output/
-|       +-- connection_log.txt       <- generated: session log
+|   +-- output/connection_log.txt    <- generated
 |
 +-- dist/
-    +-- setup.bat                    <- self-extracting BAT installer (ASCII-only)
-    +-- build_exe_source.py          <- EXE installer source (PyInstaller input)
-    +-- build_exe_on_windows.bat     <- builds VPN-Manager-Setup.exe on Windows
+    +-- setup.bat                    <- self-extracting BAT installer
 ```
 
 ---
@@ -95,31 +90,15 @@ Collects proxies from **10 sources** across three methods:
 
 | Type | Sources |
 |---|---|
-| HTML scraping | free-proxy-list.net, sslproxies.org, hidemy.name (with pagination) |
-| File URLs | ProxyScrape API (HTTP / SOCKS4 / SOCKS5), GitHub TheSpeedX lists |
-| JSON API | GeoNode proxylist (paginated, up to 3 pages) |
+| HTML scraping | free-proxy-list.net, sslproxies.org, hidemy.name |
+| File URLs | ProxyScrape API (HTTP/SOCKS4/SOCKS5), GitHub TheSpeedX |
+| JSON API | GeoNode proxylist (paginated) |
 
 **Features:**
-- CSS-selector based pagination — follows "next page" links automatically
-- Deduplication by `ip:port` key before pinging
-- Parallel TCP ping test (40 workers, 3 s timeout per attempt)
-- **TTL cache** — addresses checked within the last 6 hours are reused as-is
-- Real-time progress bar in CLI
+- Parallel TCP ping test (40 workers, 3 s timeout)
+- TTL cache — addresses checked within the last 6 hours are reused as-is
 
-**Output format** (`proxy_list.json`):
-```json
-[
-  {
-    "ip": "1.2.3.4",
-    "port": 8080,
-    "type": "HTTP",
-    "ping_ms": 120.5,
-    "status": "alive",
-    "checked_at": "2025-03-18T10:30:00+00:00"
-  }
-]
-```
-Sorted by `ping_ms` ascending. Only `status == "alive"` entries are saved.
+**Output** (`proxy_list.json`): sorted by `ping_ms` ascending, alive-only.
 
 ---
 
@@ -133,25 +112,8 @@ Sorted by `ping_ms` ascending. Only `status == "alive"` entries are saved.
 | YouTube threshold | 5 Mbit/s (HD 1080p) |
 | Target | 5 viable proxies, then stop |
 
-**Smart re-run behaviour:**
-- Proxies in `viable_proxies.json` tested less than 3 hours ago are skipped
-- A `fail_count` field tracks consecutive failures
-- After 3 failures in a row the proxy is auto-evicted from the list
-- Successful test resets `fail_count` to 0
-
-**Output format** (`viable_proxies.json`):
-```json
-[
-  {
-    "ip": "1.2.3.4", "port": 1080, "type": "SOCKS5",
-    "speed_mbps": 8.32, "latency_ms": 95,
-    "test_status": "ok",
-    "tested_at": "2025-03-18T10:30:00+00:00",
-    "fail_count": 0, "ping_ms": 120.5
-  }
-]
-```
-Sorted by `speed_mbps` descending.
+**Smart re-run:** proxies tested less than 3 hours ago are skipped.
+After 3 consecutive failures a proxy is auto-evicted.
 
 ---
 
@@ -160,22 +122,12 @@ Sorted by `speed_mbps` descending.
 Sets the Windows system proxy via three methods with automatic fallback:
 
 ```
-Method 1: winreg  ->  HKCU\...\Internet Settings  (ProxyEnable / ProxyServer)
-Method 2: PowerShell Set-ItemProperty              (fallback if winreg blocked)
-Method 3: netsh winhttp import proxy source=ie     (syncs WinHTTP stack)
+Method 1: winreg  ->  HKCU\...\Internet Settings
+Method 2: PowerShell Set-ItemProperty (fallback)
+Method 3: netsh winhttp import proxy source=ie
 ```
 
-**CLI menu commands:**
-
-| Input | Action |
-|---|---|
-| `1`..`N` | Connect the selected proxy |
-| `0` | Disconnect / reset to no proxy |
-| `s` | Show current proxy status from registry |
-| `q` | Exit |
-
-**SOCKS support:** Sets `socks=ip:port` in the registry. Works in Chrome, Edge,
-Firefox. For full-system interception (UDP, games, Discord) use Proxifier.
+Commands: `1`..`N` connect, `0` disconnect, `s` status, `q` quit.
 
 > Module 3 requires **Run as Administrator** (registry write).
 
@@ -183,25 +135,17 @@ Firefox. For full-system interception (UDP, games, Discord) use Proxifier.
 
 ## Configuration
 
-All tuneable constants are at the top of each source file:
-
 ```python
 # module1_collector/collector.py
-CACHE_TTL_HOURS = 6      # 0 = disable cache (always re-collect)
-PING_TIMEOUT    = 3      # seconds per TCP attempt
-PING_WORKERS    = 40     # parallel workers (safe max: ~80)
+CACHE_TTL_HOURS = 6      # 0 = disable cache
+PING_TIMEOUT    = 3
+PING_WORKERS    = 40
 
 # module2_tester/tester.py
-MIN_SPEED_MBPS   = 5.0   # YouTube HD threshold
-RETEST_TTL_HOURS = 3     # skip proxies tested less than N hours ago
-FAIL_EVICT_COUNT = 3     # remove after N consecutive failures (0 = never)
-TARGET_VIABLE    = 5     # stop after finding this many viable proxies
-
-# YouTube speed reference:
-# SD  480p  ~ 2   Mbit/s
-# HD  720p  ~ 2.5 Mbit/s
-# HD  1080p ~ 5   Mbit/s  <- default threshold
-# 4K        ~ 20  Mbit/s
+MIN_SPEED_MBPS   = 5.0   # HD 1080p threshold
+RETEST_TTL_HOURS = 3
+FAIL_EVICT_COUNT = 3
+TARGET_VIABLE    = 5
 ```
 
 ---
@@ -210,30 +154,21 @@ TARGET_VIABLE    = 5     # stop after finding this many viable proxies
 
 | Issue | Details |
 |---|---|
-| TCP ping != HTTP reachability | A proxy may accept TCP but fail HTTP — Module 2 catches this |
-| SOCKS4 vs SOCKS5 | Windows WinINet cannot distinguish them — apps handle it internally |
-| EXE is OS-specific | PyInstaller builds for the current OS; build on Windows for a Windows EXE |
-| Module 3 Windows only | macOS (networksetup) and Linux (gsettings) not yet implemented |
-| HTML sources may break | Site layout changes can break CSS selectors — update `HTML_SOURCES` config |
+| TCP ping != HTTP reachability | Module 2 does the real HTTP test |
+| SOCKS4 vs SOCKS5 | Windows WinINet cannot distinguish them |
+| Module 3 Windows only | macOS/Linux not yet implemented |
+| HTML sources may break | Update CSS selectors if a site changes layout |
 
 ---
 
 ## Requirements
 
 - Python 3.10+
-- Windows 10/11 for Module 3 (Modules 1 and 2 also run on Linux/macOS)
+- Windows 10/11 for Module 3 (Modules 1–2 also run on Linux/macOS)
 
 ```
-pip install -r requirements.txt
-# installs: requests, beautifulsoup4, lxml, PySocks
+python -m pip install -r requirements.txt
 ```
-
----
-
-## AI hints
-
-Each module directory contains `AI_HINTS.md` with documentation for AI assistants:
-architecture diagrams, JSON formats, extension points, common pitfalls, integration notes.
 
 ---
 
