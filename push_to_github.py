@@ -6,7 +6,7 @@ Run this script to create the GitHub repo and push all files.
 Fill in GITHUB_TOKEN below and run: python push_to_github.py
 """
 
-import os, sys, subprocess, json, getpass, shutil, stat
+import os, sys, subprocess, json, getpass, shutil
 import urllib.request, urllib.error
 
 USERNAME  = "AlexanderGal86"
@@ -52,12 +52,17 @@ def api(method, endpoint, token, data=None):
         return json.loads(e.read()), e.code
 
 def _rmtree(path):
-    """shutil.rmtree that handles Windows read-only files (git pack objects)."""
-    def _on_error(func, fpath, _exc):
-        # Clear read-only flag and retry
-        os.chmod(fpath, stat.S_IWRITE)
-        func(fpath)
-    shutil.rmtree(path, onexc=_on_error)
+    """Remove directory tree reliably on all platforms.
+
+    On Windows, shutil.rmtree fails on read-only files that git marks in
+    .git/objects/pack. The built-in 'rd /s /q' command handles them natively.
+    """
+    if sys.platform == "win32":
+        subprocess.run(["cmd", "/c", "rd", "/s", "/q",
+                        os.path.normpath(path)],
+                       check=False)
+    else:
+        shutil.rmtree(path)
 
 
 def main():
