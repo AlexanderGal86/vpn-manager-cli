@@ -6,7 +6,7 @@ Run this script to create the GitHub repo and push all files.
 Fill in GITHUB_TOKEN below and run: python push_to_github.py
 """
 
-import os, sys, subprocess, json, getpass, shutil
+import os, sys, subprocess, json, getpass, shutil, stat
 import urllib.request, urllib.error
 
 USERNAME  = "AlexanderGal86"
@@ -51,6 +51,15 @@ def api(method, endpoint, token, data=None):
     except urllib.error.HTTPError as e:
         return json.loads(e.read()), e.code
 
+def _rmtree(path):
+    """shutil.rmtree that handles Windows read-only files (git pack objects)."""
+    def _on_error(func, fpath, _exc):
+        # Clear read-only flag and retry
+        os.chmod(fpath, stat.S_IWRITE)
+        func(fpath)
+    shutil.rmtree(path, onexc=_on_error)
+
+
 def main():
     print(f"\n{C}{B}+=============================================+")
     print(f"  VPN/Proxy Manager - GitHub Deploy Script")
@@ -91,7 +100,7 @@ def main():
     # Stage files into _deploy_tmp
     print(f"\n  {B}[2/5]{RS} Staging files into {DIM}_deploy_tmp{RS}...")
     if os.path.exists(deploy_dir):
-        shutil.rmtree(deploy_dir)
+        _rmtree(deploy_dir)
 
     def _ignore(d, names):
         skip = {"_deploy_tmp", "__pycache__", ".git"}
@@ -124,7 +133,7 @@ def main():
 
     finally:
         if os.path.exists(deploy_dir):
-            shutil.rmtree(deploy_dir)
+            _rmtree(deploy_dir)
             print(f"\n  {DIM}_deploy_tmp removed{RS}")
 
     print()
