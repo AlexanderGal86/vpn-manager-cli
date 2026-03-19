@@ -1,116 +1,144 @@
 # CHANGELOG — VPN / Proxy Manager
 
-Все значимые изменения проекта документируются здесь.
-Формат основан на [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+All notable changes are documented here.
+Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [1.2.0] — 2025-03-18 · Дистрибутивы Windows
+## [1.2.1] — 2025-03-19 · Encoding fixes + missing files
+
+### Fixed
+- **`dist/setup.bat`**: Complete rewrite — ASCII-only, PowerShell called as single
+  line (no `^` multi-line continuation). Eliminates garbled output in `cmd.exe`.
+- **`requirements.txt`**: Removed Russian comments. `pip` on Windows reads files
+  with `cp1252` by default; non-ASCII bytes caused `UnicodeDecodeError`.
+- **`dist/build_exe_on_windows.bat`**: Translated to English — ASCII-only.
+- **All `.py` modules**: Added `sys.stdout.reconfigure(encoding="utf-8")` block
+  after `SetConsoleMode`. Without this, all `print()` output is garbled in
+  `cmd.exe` / PowerShell on Russian Windows.
+- **`dist/build_exe_source.py`**: Fixed infinite loop when running as PyInstaller
+  EXE. `sys.executable` inside a frozen EXE points to the EXE itself, not Python.
+  Calling `[sys.executable, "-m", "pip", ...]` re-launched the installer instead of
+  pip, creating an endless loop. Fixed by `find_python()` which searches `PATH`
+  for a real Python binary when `sys.frozen` is detected.
+- **`.gitignore`**: Removed Russian comments — ASCII-only.
 
 ### Added
-- `dist/setup.bat` — самораспаковывающийся BAT-файл (95 КБ)
-  - Проверка прав администратора с автоматическим перезапуском через UAC
-  - Проверка наличия Python; предложение установить через `winget` или python.org
-  - Встроенный архив проекта в base64; декодирование через PowerShell
-  - Создание временного файла во `%TEMP%` с последующей очисткой
-- `dist/build_exe_source.py` — исходник для сборки standalone EXE через PyInstaller
-  - Встроенный архив проекта
-  - Выбор папки установки (по умолчанию `~/vpn-manager`)
-  - Создание ярлыка `VPN Manager.bat` на рабочем столе
-  - Перезапуск от имени администратора через `ShellExecuteW`
-- `dist/build_exe_on_windows.bat` — скрипт для сборки EXE на Windows-машине пользователя
+- **`install.py`**: Self-extracting Python SFX added to repo root (was missing
+  from initial commit).
+- **`dist/build_exe_on_windows.bat`**: Added to repo (was missing from initial
+  commit).
+- All `.md` files expanded with full English documentation.
+
+---
+
+## [1.2.0] — 2025-03-18 · Windows distributables
+
+### Added
+- **`dist/setup.bat`** — self-extracting BAT file (~95 KB)
+  - Admin rights check with auto-relaunch via UAC
+  - Python detection; offers `winget install` or python.org if missing
+  - Project archive embedded as base64; decoded by PowerShell into `%TEMP%`
+  - Temp file cleaned up after install
+- **`dist/build_exe_source.py`** — source for building standalone EXE via PyInstaller
+  - Embedded project archive
+  - Install folder selection (default `~/vpn-manager`)
+  - Creates `VPN Manager.bat` shortcut on Desktop
+  - Auto-relaunch as admin via `ShellExecuteW`
+- **`dist/build_exe_on_windows.bat`** — one-click EXE builder
 
 ### Notes
-- EXE не собирается на Linux/macOS — только через PyInstaller на Windows
-- Размер standalone EXE ~7 МБ (включает Python runtime)
+- EXE must be built on Windows (PyInstaller produces OS-native binaries)
+- Standalone EXE size ~7 MB (includes Python runtime)
 
 ---
 
-## [1.1.0] — 2025-03-18 · Умный перезапуск (TTL + счётчик неудач)
+## [1.1.0] — 2025-03-18 · Smart re-run (TTL + failure counter)
 
-### Added — Module 1 (collector.py)
-- **TTL-кэш** (`CACHE_TTL_HOURS = 6`):
-  - При повторном запуске загружает существующий `proxy_list.json`
-  - Адреса с `checked_at` моложе TTL — пропускаются (не перепингуются)
-  - Адреса старше TTL или без метки — перепроверяются заново
-  - Новые адреса из источников, которых нет в кэше — добавляются
-  - `CACHE_TTL_HOURS = 0` отключает кэш (полная перезапись)
-- Выделена функция `_load_cache()` → возвращает `(fresh_by_key, stale)`
-- Выделена функция `_ping_batch()` — переиспользуется для stale и новых адресов
-- Переход с `datetime.utcnow()` на `datetime.now(timezone.utc)` (timezone-aware)
+### Added — Module 1 (`collector.py`)
+- **TTL cache** (`CACHE_TTL_HOURS = 6`):
+  - On re-run, loads existing `proxy_list.json`
+  - Addresses with `checked_at` younger than TTL are kept as-is (not re-pinged)
+  - Addresses older than TTL or without timestamp are re-checked
+  - New addresses from sources not in cache are always pinged
+  - `CACHE_TTL_HOURS = 0` disables cache (full overwrite)
+- Extracted `_load_cache()` → returns `(fresh_by_key, stale)`
+- Extracted `_ping_batch()` — reused for both stale and new addresses
+- Switched from `datetime.utcnow()` (deprecated in Python 3.12) to
+  `datetime.now(timezone.utc)` — all timestamps are now timezone-aware
 
-### Added — Module 2 (tester.py)
-- **TTL перепроверки** (`RETEST_TTL_HOURS = 3`):
-  - Свежие viable-прокси пропускаются без повторного теста скорости
-  - Если уже достаточно свежих viable ≥ TARGET_VIABLE — тестирование не запускается
-- **Счётчик неудач** (`FAIL_EVICT_COUNT = 3`):
-  - Каждый провал теста скорости увеличивает `fail_count` в JSON
-  - При `fail_count >= FAIL_EVICT_COUNT` прокси удаляется из `viable_proxies.json`
-  - Успешный тест сбрасывает счётчик в 0
-- В таблице результатов добавлен столбец **«Неудач»** (жёлтый если > 0)
-- Выделены функции: `_load_viable()`, `_is_stale()`, `_evict_failures()`, `_save_and_print()`
+### Added — Module 2 (`tester.py`)
+- **Re-test TTL** (`RETEST_TTL_HOURS = 3`):
+  - Fresh viable proxies are skipped without re-testing
+  - If enough fresh viable proxies exist (≥ TARGET_VIABLE), testing is skipped
+- **Failure counter** (`FAIL_EVICT_COUNT = 3`):
+  - Each speed test failure increments `fail_count` in the JSON
+  - When `fail_count >= FAIL_EVICT_COUNT` the proxy is removed from `viable_proxies.json`
+  - Successful test resets counter to 0
+- Result table gained a **Failures** column (shown in yellow when > 0)
+- Extracted helpers: `_load_viable()`, `_is_stale()`, `_evict_failures()`,
+  `_save_and_print()`
 
 ### Changed
-- `tested_at` теперь timezone-aware ISO 8601
+- `tested_at` is now a timezone-aware ISO 8601 string
 
 ---
 
-## [1.0.0] — 2025-03-18 · Первый релиз
+## [1.0.0] — 2025-03-18 · Initial release
 
 ### Added
 
-#### Структура проекта
-- Три независимых модуля в отдельных папках
-- `main.py` — единый pipeline + CLI (`--module 1/2/3`)
+#### Project structure
+- Three independent modules in separate folders
+- `main.py` — unified pipeline + CLI (`--module 1/2/3`)
 - `requirements.txt`
 - `README.md`
-- `install.py` — самораспаковывающийся Python-скрипт
+- `install.py` — self-extracting Python script
 
 #### Module 1 — Proxy Collector (`module1_collector/collector.py`)
-- HTML-парсинг таблиц прокси через BeautifulSoup4 + lxml
-  - Поддержка пагинации через CSS-селектор следующей страницы
-  - Источники: `free-proxy-list.net`, `sslproxies.org`, `hidemy.name`
-- Скачивание текстовых файлов IP:PORT (формат `ip:port` построчно)
-  - Источники: ProxyScrape API (HTTP/SOCKS4/SOCKS5), GitHub TheSpeedX
-- JSON API с пагинацией
-  - Источники: GeoNode proxylist API
-- Дедупликация по ключу `ip:port`
-- Параллельный TCP ping-тест (40 воркеров, ThreadPoolExecutor)
-  - Прогресс-бар в реальном времени через `\r` overwrite
-  - Таймаут: 3 секунды на попытку
-- Выход: `proxy_list.json` отсортированный по пингу
+- HTML table scraping via BeautifulSoup4 + lxml
+  - Pagination support via CSS "next page" selector
+  - Sources: `free-proxy-list.net`, `sslproxies.org`, `hidemy.name`
+- Text file download (IP:PORT format, one per line)
+  - Sources: ProxyScrape API (HTTP/SOCKS4/SOCKS5), GitHub TheSpeedX
+- JSON API with pagination
+  - Source: GeoNode proxylist API
+- Deduplication by `ip:port` key
+- Parallel TCP ping test (40 workers, ThreadPoolExecutor)
+  - Real-time progress bar via `\r` overwrite
+  - 3-second timeout per attempt
+- Output: `proxy_list.json` sorted by ping, alive-only
 
 #### Module 2 — Speed Tester (`module2_tester/tester.py`)
-- Пакетная обработка: батчи по 10 адресов
-- Параллельное тестирование: 2 прокси одновременно
-- Двухэтапный тест: замер задержки (HEAD) + замер скорости (скачивание 2МБ)
-- Fallback: 3 тестовых URL для скачивания
-- Порог YouTube: 5 Мбит/с (настраивается `MIN_SPEED_MBPS`)
-- Остановка по достижении TARGET_VIABLE подходящих прокси
-- Live-обновление прогресса в CLI (overwrite строки)
-- Итоговая таблица: IP, тип, скорость, задержка
+- Batch processing: 10 addresses per batch
+- Parallel testing: 2 proxies simultaneously
+- Two-stage test: latency (HEAD request) + speed (2 MB download)
+- Fallback: 3 test URLs for download
+- YouTube threshold: 5 Mbit/s (configurable via `MIN_SPEED_MBPS`)
+- Stops after reaching `TARGET_VIABLE` suitable proxies
+- Live CLI progress update (line overwrite)
+- Result table: IP, type, speed, latency
 
 #### Module 3 — Proxy Connector (`module3_connector/connector.py`)
-- Интерактивное меню CLI с нумерованным списком прокси
-- Установка системного прокси Windows тремя методами с fallback:
-  1. `winreg` — запись в реестр HKCU (основной метод)
+- Interactive CLI menu with numbered proxy list
+- Sets Windows system proxy via three methods with fallback:
+  1. `winreg` — write to registry HKCU (primary method)
   2. PowerShell `Set-ItemProperty` (fallback)
-  3. `netsh winhttp import proxy source=ie` (синхронизация WinHTTP)
-- Правильный формат для SOCKS: `socks=ip:port`
-- `ProxyOverride` для исключения локальных адресов
-- Отключение прокси: команда `0`
-- Статус текущего прокси: команда `s`
-- Лог всех действий в `connection_log.txt`
-- Предупреждение об ограничениях SOCKS на Windows
+  3. `netsh winhttp import proxy source=ie` (WinHTTP sync)
+- Correct SOCKS format: `socks=ip:port`
+- `ProxyOverride` to exclude local addresses
+- Disconnect proxy: command `0`
+- Show current proxy status: command `s`
+- All actions logged to `connection_log.txt`
+- Warning about SOCKS limitations on Windows
 
 ---
 
-## Планируемые улучшения (Roadmap)
+## Roadmap
 
-- [ ] Проверка доступности конкретных сайтов через прокси (YouTube, Google)
-- [ ] Автоматическая ротация прокси при падении скорости
-- [ ] Поддержка macOS (`networksetup`) и Linux (`gsettings`)
-- [ ] GUI-версия на Tkinter или PyQt
-- [ ] Шифрование `viable_proxies.json` (опционально)
-- [ ] Уведомления (Windows Toast) при нахождении быстрого прокси
-- [ ] Экспорт в форматы: PAC-файл, Proxychains конфиг
+- [ ] Per-site reachability check (YouTube, Google) through the proxy
+- [ ] Automatic proxy rotation on speed degradation
+- [ ] macOS support (`networksetup`) and Linux (`gsettings`)
+- [ ] GUI version (Tkinter or PyQt)
+- [ ] Windows Toast notification when a fast proxy is found
+- [ ] Export to PAC file and Proxychains config format

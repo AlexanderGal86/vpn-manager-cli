@@ -54,26 +54,26 @@ def progress_bar(done, total, width=36):
     return f"[{bar}] {pct:5.1f}%"
 
 def extract():
-    print(f"  {C}Декодирование архива…{RS}")
+    print(f"  {C}Decoding archive...{RS}")
     raw = base64.b64decode(ARCHIVE_B64)
     zf  = zipfile.ZipFile(io.BytesIO(raw))
     names = [n for n in zf.namelist() if "__pycache__" not in n]
     total = len(names)
 
-    # Предлагаем выбрать папку назначения
+    # Choose install folder
     default_dest = os.path.join(os.path.expanduser("~"), "vpn-manager")
-    print(f"\n  {B}Папка установки:{RS}  {default_dest}")
-    custom = input(f"  Изменить? (Enter = по умолчанию, или введите путь) > ").strip()
+    print(f"\n  {B}Install folder:{RS}  {default_dest}")
+    custom = input(f"  Change? (Enter = default, or type path) > ").strip()
     dest = custom if custom else default_dest
 
     if os.path.exists(dest):
-        print(f"\n  {Y}Папка уже существует: {dest}{RS}")
-        ans = input("  Перезаписать? [y/N] > ").strip().lower()
+        print(f"\n  {Y}Folder already exists: {dest}{RS}")
+        ans = input("  Overwrite? [y/N] > ").strip().lower()
         if ans != "y":
-            print(f"  {Y}Установка отменена.{RS}\n")
+            print(f"  {Y}Cancelled.{RS}\n")
             return None
 
-    print(f"\n  {B}Распаковка → {dest}{RS}\n")
+    print(f"\n  {B}Extracting to {dest}{RS}\n")
     done = 0
     for name in names:
         if name.endswith("/"):
@@ -88,51 +88,79 @@ def extract():
         print(f"  {progress_bar(done, total)}  {DIM}{rel[:45]:<45}{RS}",
               end="\r", flush=True)
 
-    print(f"  {progress_bar(total, total)}  {G}Готово!{RS}              ")
-    print(f"\n  {G}✔ Распаковано {total} файлов в:\n    {C}{dest}{RS}")
+    print(f"  {progress_bar(total, total)}  {G}Done!{RS}              ")
+    print(f"\n  {G}Extracted {total} files to:\n    {C}{dest}{RS}")
     return dest
+
+def find_python():
+    """
+    When running as a PyInstaller EXE, sys.executable points to the EXE itself.
+    We must find the real system Python to run pip — otherwise pip re-launches
+    the installer EXE, creating an infinite loop.
+    """
+    if not getattr(sys, 'frozen', False):
+        return sys.executable          # running as plain .py — use current Python
+
+    # Frozen EXE: search for Python in PATH
+    for cmd in ('python', 'python3', 'py'):
+        try:
+            r = subprocess.run(
+                [cmd, '--version'],
+                capture_output=True, timeout=5
+            )
+            if r.returncode == 0:
+                return cmd
+        except Exception:
+            pass
+    return None   # Python not found in PATH
+
 
 def install_deps(dest):
     req = os.path.join(dest, "requirements.txt")
-    print(f"\n  {B}Установка зависимостей Python{RS}")
+    print(f"\n  {B}Install Python dependencies{RS}")
     print(f"  {DIM}requests, beautifulsoup4, lxml, PySocks{RS}\n")
-    ans = input("  Установить сейчас? [Y/n] > ").strip().lower()
+    ans = input("  Install now? [Y/n] > ").strip().lower()
     if ans in ("", "y"):
+        python = find_python()
+        if python is None:
+            print(f"  {Y}Python not found in PATH.{RS}")
+            print(f"  Install manually: pip install -r {req}")
+            return
         result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "-r", req, "-q"],
+            [python, "-m", "pip", "install", "-r", req, "-q"],
             capture_output=False
         )
         if result.returncode == 0:
-            print(f"  {G}✔ Зависимости установлены.{RS}")
+            print(f"  {G}Done.{RS}")
         else:
-            print(f"  {Y}⚠ Установите вручную: pip install -r {req}{RS}")
+            print(f"  {Y}Failed. Run manually: pip install -r {req}{RS}")
 
 def create_shortcut(dest):
-    """Создаёт .bat-ярлык на рабочем столе для быстрого запуска."""
+    """Creates a .bat shortcut on the Desktop for quick launch."""
     try:
         desktop = os.path.join(os.path.expanduser("~"), "Desktop")
         shortcut = os.path.join(desktop, "VPN Manager.bat")
         with open(shortcut, "w", encoding="utf-8") as f:
             f.write(f'@echo off\ncd /d "{dest}"\npython main.py\npause\n')
-        print(f"  {G}✔ Ярлык создан на рабочем столе:{RS}  {DIM}VPN Manager.bat{RS}")
+        print(f"  {G}Desktop shortcut created:{RS}  {DIM}VPN Manager.bat{RS}")
     except Exception as e:
-        print(f"  {DIM}Ярлык не создан: {e}{RS}")
+        print(f"  {DIM}Shortcut skipped: {e}{RS}")
 
 def show_usage(dest):
     print(f"""
 {C}{B}  ─────────────────────────────────────────────────────────────{RS}
-  {B}Как запустить:{RS}
+  {B}How to run:{RS}
 
     {C}cd {dest}{RS}
 
-    {G}python main.py{RS}              # полный pipeline: 1 → 2 → 3
-    {G}python main.py --module 1{RS}   # только сбор прокси
-    {G}python main.py --module 2{RS}   # только тест скорости
-    {G}python main.py --module 3{RS}   # только выбор и подключение
+    {G}python main.py{RS}              # full pipeline: 1 -> 2 -> 3
+    {G}python main.py --module 1{RS}   # collect proxies only
+    {G}python main.py --module 2{RS}   # speed test only
+    {G}python main.py --module 3{RS}   # connect only
 
-  {B}Поведение при повторном запуске:{RS}
-    {DIM}Модуль 1: TTL-кэш 6 часов — свежие адреса не перепроверяются{RS}
-    {DIM}Модуль 2: TTL 3 часа + автоудаление при 3 неудачах подряд{RS}
+  {B}Re-run behaviour:{RS}
+    {DIM}Module 1: TTL cache 6h — fresh addresses skipped{RS}
+    {DIM}Module 2: TTL 3h + auto-remove after 3 failures in a row{RS}
 {C}{B}  ─────────────────────────────────────────────────────────────{RS}
 """)
 
@@ -140,8 +168,8 @@ def main():
     banner()
 
     if sys.platform == "win32" and not is_admin():
-        print(f"  {Y}Для записи в реестр нужны права администратора.{RS}")
-        ans = input("  Перезапустить от администратора? [Y/n] > ").strip().lower()
+        print(f"  {Y}Administrator rights required for registry write.{RS}")
+        ans = input("  Relaunch as administrator? [Y/n] > ").strip().lower()
         if ans in ("", "y"):
             relaunch_as_admin()
 
@@ -152,7 +180,7 @@ def main():
             create_shortcut(dest)
         show_usage(dest)
 
-    input(f"\n  {DIM}[Enter] для выхода…{RS}")
+    input(f"\n  {DIM}[Enter] to exit...{RS}")
 
 if __name__ == "__main__":
     main()
